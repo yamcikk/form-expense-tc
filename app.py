@@ -62,7 +62,7 @@ with st.form("expense_form"):
     )
     
     # FORM KHUSUS JIKA MEMILIH MEALS
-     jenis_meals = ""
+    jenis_meals = ""
     if kategori_gl == "Meals":
         st.info("🍽️ Form Khusus Rincian Meals")
         jenis_meals = st.selectbox("Jenis Meals", ["BF (Breakfast)", "LC (Lunch)", "CB (Coffeebreak)", "DN (Dinner)"])
