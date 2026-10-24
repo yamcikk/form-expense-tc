@@ -6,12 +6,9 @@ import io
 # Konfigurasi Halaman (Tampilan Mobile)
 st.set_page_config(page_title="Form Expense Area", page_icon="📋", layout="centered")
 
-# Inisialisasi Session State yang aman dari reset
-if 'last_km_gasoline' not in st.session_state:
-    st.session_state['last_km_gasoline'] = {}
-
-if 'gasoline_seq' not in st.session_state:
-    st.session_state['gasoline_seq'] = {}
+# Session state untuk menyimpan KM Terakhir berdasarkan kode gasoline per user
+if 'km_history_per_code' not in st.session_state:
+    st.session_state['km_history_per_code'] = {}
 
 # Menampilkan Logo jika ada
 try:
@@ -80,33 +77,42 @@ kategori_gl = st.selectbox(
     ]
 )
 
-# FORM KHUSUS GASOLINE
+# FORM KHUSUS GASOLINE DENGAN DROPDOWN KODE MANUAL (G, G1, G2, DST)
 liter = 0.0
 km_sebelumnya = 0
 km_sekarang = 0
-kode_gasoline = ""
+pilihan_kode_g = ""
 
-if "Gasoline" in kategori_gl and pilihan_nama != "Pilih Nama...":
-    # Inisialisasi counter per nama jika belum ada
-    if pilihan_nama not in st.session_state['gasoline_seq']:
-        st.session_state['gasoline_seq'][pilihan_nama] = 0
+if "Gasoline" in kategori_gl:
+    st.info("⛽ Form Gasoline Terdeteksi")
     
-    seq = st.session_state['gasoline_seq'][pilihan_nama]
-    
-    # Penomoran: 0 -> G, 1 -> G1, 2 -> G2, dst.
-    if seq == 0:
-        kode_gasoline = "G"
-    else:
-        kode_gasoline = f"G{seq}"
-    
-    st.info(f"⛽ Form Gasoline Terdeteksi untuk **{pilihan_nama}**: Kode **[{kode_gasoline}]**")
+    # Dropdown pilihan kode gasoline
+    pilihan_kode_g = st.selectbox(
+        "Pilih Nomor Gasoline",
+        ["G", "G1", "G2", "G3", "G4", "G5"]
+    )
     
     liter = st.number_input("Jumlah Liter", min_value=0.0, step=0.1)
     
-    # Ambil otomatis KM sebelumnya dari memori sesi
-    default_km_prev = st.session_state['last_km_gasoline'].get(pilihan_nama, 0)
+    # Logika menarik KM Sebelumnya secara otomatis berdasarkan pasangan kode sebelumnya
+    # Contoh: Jika pilih G1, cari KM Sekarang dari G milik user tersebut.
+    # Jika pilih G2, cari KM Sekarang dari G1 milik user tersebut, dst.
+    map_sebelumnya = {"G1": "G", "G2": "G1", "G3": "G2", "G4": "G3", "G5": "G4"}
     
-    km_sebelumnya = st.number_input("KM Sebelumnya", value=int(default_km_prev), step=1)
+    suggested_km = 0
+    if pilihan_nama != "Pilih Nama...":
+        user_memory = st.session_state['km_history_per_code'].get(pilihan_nama, {})
+        if pilihan_kode_g in map_sebelumnya:
+            prev_code = map_sebelumnya[pilihan_kode_g]
+            suggested_km = user_memory.get(prev_code, 0)
+        elif pilihan_kode_g == "G":
+            suggested_km = user_memory.get("G_last", 0)
+
+    km_sebelumnya = st.number_input(
+        f"KM Sebelumnya (Otomatis menyambung dari pengisian sebelumnya)", 
+        value=int(suggested_km), 
+        step=1
+    )
     km_sekarang = st.number_input("KM Sekarang", min_value=0, step=1)
 
 deskripsi = st.text_area("Description (Keterangan Kegiatan)")
@@ -152,10 +158,14 @@ if submitted:
         waktu_input = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         st.success(f"Data pengeluaran Rp {nominal:,} berhasil dicatat pada {waktu_input}!")
         
-        # Simpan memori KM dan naikin hitungan urutan G untuk user tersebut
-        if "Gasoline" in kategori_gl and km_sekarang > 0:
-            st.session_state['last_km_gasoline'][pilihan_nama] = km_sekarang
-            st.session_state['gasoline_seq'][pilihan_nama] += 1
+        # Simpan KM Sekarang ke memori berdasarkan kode dan nama user
+        if "Gasoline" in kategori_gl and km_sekarang > 0 and pilihan_nama != "Pilih Nama...":
+            if pilihan_nama not in st.session_state['km_history_per_code']:
+                st.session_state['km_history_per_code'][pilihan_nama] = {}
+            
+            # Simpan KM Sekarang ke kode yang sedang diinput (misal simpan ke G atau G1)
+            st.session_state['km_history_per_code'][pilihan_nama][pilihan_kode_g] = km_sekarang
+            st.session_state['km_history_per_code'][pilihan_nama]["G_last"] = km_sekarang
 
         header_info = [
             ["PT. DGW FIT", ""],
@@ -176,7 +186,7 @@ if submitted:
         
         row_data = {
             "Date": tanggal.strftime("%d/%m/%Y"),
-            "Non Bill/Gasoline (G) - GNB (Gasoline Non Bill)/Meals (Wajib Diisi)": kode_gasoline if "Gasoline" in kategori_gl else (alasan_non_bill if status_nota == "Non Bill" else ""),
+            "Non Bill/Gasoline (G) - GNB (Gasoline Non Bill)/Meals (Wajib Diisi)": pilihan_kode_g if "Gasoline" in kategori_gl else (alasan_non_bill if status_nota == "Non Bill" else ""),
             "Liter": liter if "Gasoline" in kategori_gl else "",
             "KM Sebelumnya": km_sebelumnya if "Gasoline" in kategori_gl else "",
             "KM Sekarang": km_sekarang if "Gasoline" in kategori_gl else "",
@@ -219,5 +229,6 @@ if submitted:
             file_name=f"Expense_{pilihan_nama}.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
+        st.rerun()
     else:
         st.error("Gagal! Pilih Nama Karyawan, lengkapi Keterangan, Nominal, dan ambil foto bukti.")
