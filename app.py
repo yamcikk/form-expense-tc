@@ -9,6 +9,14 @@ st.set_page_config(page_title="Form Expense Area", page_icon="📋", layout="cen
 st.title("PT. DGW FIT")
 st.subheader("Settlement Report Expense - AST TCS Training Center Nasional")
 
+# Fungsi untuk merapikan teks (Huruf kapital di awal kalimat/setelah titik)
+def format_teks_rapi(teks):
+    if not teks:
+        return ""
+    kalimat_list = teks.split('. ')
+    kalimat_rapi = [k.strip().capitalize() for k in kalimat_list if k.strip()]
+    return '. '.join(kalimat_rapi) + ('.' if teks.endswith('.') else '')
+
 # DATABASE KARYAWAN (Header Atas)
 DATA_KARYAWAN = {
     "Pilih Nama...": {
@@ -42,7 +50,7 @@ st.markdown("### 2. Rincian Transaksi")
 
 tanggal = st.date_input("Date (Tanggal Pembelian)")
 
-# KATEGORI UTAMA (Pilihan ini sekarang langsung merespons layar secara instan)
+# KATEGORI UTAMA PENGELUARAN
 kategori_gl = st.selectbox(
     "Pilih Jenis Pengeluaran",
     [
@@ -59,34 +67,7 @@ kategori_gl = st.selectbox(
     ]
 )
 
-# VARIABEL
-jenis_meals = ""
-nama_pic = pilihan_nama if pilihan_nama != "Pilih Nama..." else ""
-posisi_pic = data_terpilih["jabatan"] if pilihan_nama != "Pilih Nama..." else ""
-perusahaan = "PT DGW FIT"
-
-# FORM KHUSUS MEALS (Langsung muncul begitu "Meals" dipilih di atas)
-if kategori_gl == "Meals":
-    st.info("🍽️ Form Khusus Rincian Meals (Bisa diisi lebih dari 1 PIC)")
-    jenis_meals = st.selectbox("Jenis Meals", ["BF (Breakfast)", "LC (Lunch)", "CB (Coffeebreak)", "DN (Dinner)"])
-    nama_pic = st.text_input("Nama PIC yang Ikut Makan (Contoh: Dika Aprilyanto, Ahmad Nabiel Z, Ibrahim)")
-    posisi_pic = st.text_input("Posisi PIC (Contoh: Ass.TCS, FA RnD, MT)")
-    perusahaan = st.text_input("Perusahaan", value="PT DGW FIT")
-else:
-    nama_pic = st.text_input("Nama PIC", value=pilihan_nama if pilihan_nama != "Pilih Nama..." else "")
-    posisi_pic = st.text_input("Posisi PIC", value=data_terpilih["jabatan"])
-    perusahaan = st.text_input("Perusahaan", value="PT DGW FIT")
-
-tempat = st.text_input("Tempat Pembelian")
-alamat = st.text_input("Alamat Pembelian")
-deskripsi = st.text_area("Description (Keterangan Kegiatan)")
-
-alasan_non_bill = st.selectbox(
-    "Alasan Non Bill",
-    ["Non Bill - Gasoline", "Non Bill - Meals", "Non Bill"]
-)
-
-# Form khusus jika memilih Gasoline
+# FORM KHUSUS GASOLINE (Liter & KM)
 liter = 0.0
 km_sebelumnya = 0
 km_sekarang = 0
@@ -96,7 +77,39 @@ if "Gasoline" in kategori_gl:
     km_sebelumnya = st.number_input("KM Sebelumnya", min_value=0, step=1)
     km_sekarang = st.number_input("KM Sekarang", min_value=0, step=1)
 
+deskripsi = st.text_area("Description (Keterangan Kegiatan)")
 nominal = st.number_input("Nominal (Rp)", min_value=0, step=1000)
+
+st.markdown("---")
+st.markdown("### 3. Status Dokumen (Bill / Non-Bill)")
+status_nota = st.radio("Pilih Jenis Nota", ["Ada Nota / Bill Resmi", "Non Bill"])
+
+# VARIABEL DETAIL NON-BILL (Hanya muncul jika Non-Bill dipilih)
+tempat = ""
+alamat = ""
+nama_pic = pilihan_nama if pilihan_nama != "Pilih Nama..." else ""
+posisi_pic = data_terpilih["jabatan"] if pilihan_nama != "Pilih Nama..." else ""
+perusahaan = "PT DGW FIT"
+alasan_non_bill = ""
+
+if status_nota == "Non Bill":
+    st.info("📝 Masukkan Detail Alasan & Informasi Non-Bill")
+    pilihan_alasan = st.selectbox(
+        "Kategori Nota Non Bill",
+        ["Non Bill - Gasoline", "Non Bill - Meals", "Non Bill Lainnya"]
+    )
+    tempat = st.text_input("Tempat Pembelian")
+    alamat = st.text_input("Alamat Pembelian")
+    nama_pic = st.text_input("Nama PIC (Bisa > 1 orang, pisahkan dengan koma)", value=pilihan_nama)
+    posisi_pic = st.text_input("Posisi PIC", value=data_terpilih["jabatan"])
+    perusahaan = st.text_input("Perusahaan", value="PT DGW FIT")
+    note_alasan = st.text_area("Note Alasan Non Bill (Jelaskan mengapa nota tersebut non bill)")
+    
+    # Menggabungkan pilihan kategori nota dan note penjelasan
+    if note_alasan:
+        alasan_non_bill = f"{pilihan_alasan} - {note_alasan}"
+    else:
+        alasan_non_bill = pilihan_alasan
 
 st.markdown("---")
 st.write("**Dokumentasi (Wajib Lampirkan Bukti Ber-Timestamp)**")
@@ -106,7 +119,7 @@ submitted = st.button("Submit Laporan")
 
 # Logika setelah tombol Submit ditekan
 if submitted:
-    if pilihan_nama != "Pilih Nama..." and tempat and deskripsi and nominal > 0 and foto:
+    if pilihan_nama != "Pilih Nama..." and deskripsi and nominal > 0 and foto:
         waktu_input = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         st.success(f"Data pengeluaran Rp {nominal:,} berhasil dicatat pada {waktu_input}!")
         
@@ -125,50 +138,37 @@ if submitted:
         ]
         df_header = pd.DataFrame(header_info)
         
-        if kategori_gl == "Meals":
-            kode_jenis_meals = jenis_meals.split(" ")[0]
-            row_data = {
-                "Date": tanggal.strftime("%d/%m/%Y"),
-                "Jenis Meals": kode_jenis_meals,
-                "Tempat Pembelian": str(tempat).upper(),
-                "Alamat Pembelian": str(alamat).upper(),
-                "Nama PIC": str(nama_pic).upper(),
-                "Posisi": str(posisi_pic).upper(),
-                "Perusahaan": str(perusahaan).upper(),
-                "Description": str(deskripsi).upper(),
-                "Total Nominal": nominal
-            }
-        else:
-            row_data = {
-                "Date": tanggal.strftime("%d/%m/%Y"),
-                "Description": str(deskripsi).upper(),
-                "Code GL Biaya TC": "",
-                "Category 1": "",
-                "Biaya TC": nominal if "Biaya TC" in kategori_gl else "",
-                "Parking/Toll": nominal if "Parking" in kategori_gl else "",
-                "Gasoline (Konversi jika Pertamax)": nominal if "Gasoline" in kategori_gl else "",
-                "Vehicle Maintenance": nominal if "Vehicle" in kategori_gl else "",
-                "Stationery": nominal if "Stationery" in kategori_gl else "",
-                "Postage": nominal if "Postage" in kategori_gl else "",
-                "Transport": nominal if "Transport" in kategori_gl else "",
-                "Meals": "",
-                "Hotel (Jika perdin dan ada laundry, masukan pada post ini)": nominal if "Hotel" in kategori_gl else "",
-                "Others": nominal if "Others" in kategori_gl else "",
-                "TOTAL": nominal
-            }
+        # Susunan baris data transaksi (deskripsi dan format teks rapi)
+        row_data = {
+            "Date": tanggal.strftime("%d/%m/%Y"),
+            "Description": format_teks_rapi(deskripsi),
+            "Code GL Biaya TC": "",
+            "Category 1": "",
+            "Biaya TC": nominal if "Biaya TC" in kategori_gl else "",
+            "Parking/Toll": nominal if "Parking" in kategori_gl else "",
+            "Gasoline (Konversi jika Pertamax)": nominal if "Gasoline" in kategori_gl else "",
+            "Vehicle Maintenance": nominal if "Vehicle" in kategori_gl else "",
+            "Stationery": nominal if "Stationery" in kategori_gl else "",
+            "Postage": nominal if "Postage" in kategori_gl else "",
+            "Transport": nominal if "Transport" in kategori_gl else "",
+            "Meals": nominal if kategori_gl == "Meals" else "",
+            "Hotel (Jika perdin dan ada laundry, masukan pada post ini)": nominal if "Hotel" in kategori_gl else "",
+            "Others": nominal if "Others" in kategori_gl else "",
+            "TOTAL": nominal
+        }
         
         df_transaksi = pd.DataFrame([row_data])
         
         df_dokumen = pd.DataFrame([{
             "Tanggal": tanggal.strftime("%d %b %Y"),
-            "Kegiatan & Keterangan": str(deskripsi).upper(),
+            "Kegiatan & Keterangan": format_teks_rapi(deskripsi),
             "Nama File Foto": foto.name,
             "Timestamp Upload": waktu_input
         }])
         
         output = io.BytesIO()
         with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-            sheet_name_rekap = "Form Meals" if kategori_gl == "Meals" else "Form Expense"
+            sheet_name_rekap = "Form Expense"
             
             df_header.to_excel(writer, sheet_name=sheet_name_rekap, index=False, header=False)
             df_transaksi.to_excel(writer, sheet_name=sheet_name_rekap, index=False, startrow=len(header_info))
@@ -181,4 +181,4 @@ if submitted:
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
     else:
-        st.error("Gagal! Pilih Nama Karyawan terlebih dahulu serta lengkapi Tempat, Keterangan, Nominal, dan Foto.")
+        st.error("Gagal! Pilih Nama Karyawan, lengkapi Keterangan, Nominal, dan ambil foto bukti.")
