@@ -6,11 +6,11 @@ import io
 # Konfigurasi Halaman (Tampilan Mobile)
 st.set_page_config(page_title="Form Expense Area", page_icon="📋", layout="centered")
 
-# Inisialisasi Session State yang lebih aman
+# Menggunakan Session State untuk menyimpan riwayat KM dan counter gasoline
 if 'last_km_gasoline' not in st.session_state:
     st.session_state['last_km_gasoline'] = {}
-if 'gasoline_history_count' not in st.session_state:
-    st.session_state['gasoline_history_count'] = {}
+if 'gasoline_count_tracker' not in st.session_state:
+    st.session_state['gasoline_count_tracker'] = {}
 
 # Menampilkan Logo jika ada
 try:
@@ -86,18 +86,18 @@ km_sekarang = 0
 kode_gasoline = ""
 
 if "Gasoline" in kategori_gl:
-    if pilihan_nama not in st.session_state['gasoline_history_count']:
-        st.session_state['gasoline_history_count'][pilihan_nama] = 0
+    if pilihan_nama not in st.session_state['gasoline_count_tracker']:
+        st.session_state['gasoline_count_tracker'][pilihan_nama] = 0
     
-    total_input_sebelumnya = st.session_state['gasoline_history_count'][pilihan_nama]
+    idx = st.session_state['gasoline_count_tracker'][pilihan_nama]
     
-    # Penomoran: 0 -> G, 1 -> G1, 2 -> G2, dst.
-    if total_input_sebelumnya == 0:
+    # Penomoran persis seperti standar HO: G untuk urutan pertama, G1 untuk kedua, G2 untuk ketiga, dst.
+    if idx == 0:
         kode_gasoline = "G"
     else:
-        kode_gasoline = f"G{total_input_sebelumnya}"
+        kode_gasoline = f"G{idx}"
     
-    st.info(f"⛽ Form Gasoline Terdeteksi: **Kode [{kode_gasoline}]** (Urutan ke-{total_input_sebelumnya + 1} hari ini)")
+    st.info(f"⛽ Form Gasoline Terdeteksi: **Kode [{kode_gasoline}]**")
     
     liter = st.number_input("Jumlah Liter", min_value=0.0, step=0.1)
     
@@ -150,10 +150,10 @@ if submitted:
         waktu_input = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         st.success(f"Data pengeluaran Rp {nominal:,} berhasil dicatat pada {waktu_input}!")
         
-        # Jika transaksi ini adalah Gasoline, simpan KM Sekarang dan tambahkan counter penomoran G
+        # Jika transaksi ini Gasoline, simpan KM sekarang dan increment counter agar jadi G1, G2, dst.
         if "Gasoline" in kategori_gl and km_sekarang > 0:
             st.session_state['last_km_gasoline'][pilihan_nama] = km_sekarang
-            st.session_state['gasoline_history_count'][pilihan_nama] += 1
+            st.session_state['gasoline_count_tracker'][pilihan_nama] += 1
 
         header_info = [
             ["PT. DGW FIT", ""],
