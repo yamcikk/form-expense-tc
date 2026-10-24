@@ -6,10 +6,22 @@ import io
 # Konfigurasi Halaman (Tampilan Mobile)
 st.set_page_config(page_title="Form Expense Area", page_icon="📋", layout="centered")
 
-st.title("PT. DGW FIT")
-st.subheader("Settlement Report Expense - Training Center Nasional")
+# Menggunakan Session State untuk menyimpan riwayat KM dan hitungan G per karyawan
+if 'last_km_gasoline' not in st.session_state:
+    st.session_state['last_km_gasoline'] = {}
+if 'gasoline_count' not in st.session_state:
+    st.session_state['gasoline_count'] = {}
 
-# Fungsi untuk merapikan teks (Huruf kapital di awal kalimat/setelah titik)
+# Menampilkan Logo jika ada
+try:
+    st.image("logo.png", width=150)
+except:
+    pass
+
+st.title("PT. DGW FIT")
+st.subheader("Settlement Report Expense - AST TCS Training Center Nasional")
+
+# Fungsi untuk merapikan teks
 def format_teks_rapi(teks):
     if not teks:
         return ""
@@ -67,14 +79,26 @@ kategori_gl = st.selectbox(
     ]
 )
 
-# FORM KHUSUS GASOLINE (Liter & KM)
+# FORM KHUSUS GASOLINE
 liter = 0.0
 km_sebelumnya = 0
 km_sekarang = 0
+kode_gasoline = ""
+
 if "Gasoline" in kategori_gl:
-    st.info("⛽ Masukkan Data Liter & Kilometer Kendaraan")
+    if pilihan_nama not in st.session_state['gasoline_count']:
+        st.session_state['gasoline_count'][pilihan_nama] = 0
+    
+    count = st.session_state['gasoline_count'][pilihan_nama]
+    # Penomoran: 0 -> G, 1 -> G1, 2 -> G2, dst.
+    kode_gasoline = "G" if count == 0 else f"G{count}"
+    
+    st.info(f"⛽ Form Gasoline Terdeteksi: **Kode [{kode_gasoline}]**")
+    
     liter = st.number_input("Jumlah Liter", min_value=0.0, step=0.1)
-    km_sebelumnya = st.number_input("KM Sebelumnya", min_value=0, step=1)
+    
+    default_km_prev = st.session_state['last_km_gasoline'].get(pilihan_nama, 0)
+    km_sebelumnya = st.number_input("KM Sebelumnya (Otomatis dari KM Sekarang sebelumnya)", value=default_km_prev, step=1)
     km_sekarang = st.number_input("KM Sekarang", min_value=0, step=1)
 
 deskripsi = st.text_area("Description (Keterangan Kegiatan)")
@@ -84,7 +108,6 @@ st.markdown("---")
 st.markdown("### 3. Status Dokumen (Bill / Non-Bill)")
 status_nota = st.radio("Pilih Jenis Nota", ["Ada Nota / Bill Resmi", "Non Bill"])
 
-# VARIABEL DETAIL NON-BILL (Hanya muncul jika Non-Bill dipilih)
 tempat = ""
 alamat = ""
 nama_pic = pilihan_nama if pilihan_nama != "Pilih Nama..." else ""
@@ -105,7 +128,6 @@ if status_nota == "Non Bill":
     perusahaan = st.text_input("Perusahaan", value="PT DGW FIT")
     note_alasan = st.text_area("Note Alasan Non Bill (Jelaskan mengapa nota tersebut non bill)")
     
-    # Menggabungkan pilihan kategori nota dan note penjelasan
     if note_alasan:
         alasan_non_bill = f"{pilihan_alasan} - {note_alasan}"
     else:
@@ -117,12 +139,16 @@ foto = st.camera_input("Ambil Foto Sekarang")
 
 submitted = st.button("Submit Laporan")
 
-# Logika setelah tombol Submit ditekan
 if submitted:
     if pilihan_nama != "Pilih Nama..." and deskripsi and nominal > 0 and foto:
         waktu_input = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         st.success(f"Data pengeluaran Rp {nominal:,} berhasil dicatat pada {waktu_input}!")
         
+        # Simpan memori KM untuk transaksi gasoline berikutnya
+        if "Gasoline" in kategori_gl and km_sekarang > 0:
+            st.session_state['last_km_gasoline'][pilihan_nama] = km_sekarang
+            st.session_state['gasoline_count'][pilihan_nama] += 1
+
         header_info = [
             ["PT. DGW FIT", ""],
             ["SETTLEMENT REPORT EXPENSE - AST TCS TRAINING CENTER NASIONAL", ""],
@@ -138,10 +164,16 @@ if submitted:
         ]
         df_header = pd.DataFrame(header_info)
         
-        # Susunan baris data transaksi (deskripsi dan format teks rapi)
+        # Format deskripsi rapi
+        final_deskripsi = format_teks_rapi(deskripsi)
+        
         row_data = {
             "Date": tanggal.strftime("%d/%m/%Y"),
-            "Description": format_teks_rapi(deskripsi),
+            "Non Bill/Gasoline (G) - GNB (Gasoline Non Bill)/Meals (Wajib Diisi)": kode_gasoline if "Gasoline" in kategori_gl else (alasan_non_bill if status_nota == "Non Bill" else ""),
+            "Liter": liter if "Gasoline" in kategori_gl else "",
+            "KM Sebelumnya": km_sebelumnya if "Gasoline" in kategori_gl else "",
+            "KM Sekarang": km_sekarang if "Gasoline" in kategori_gl else "",
+            "Description": final_deskripsi,
             "Code GL Biaya TC": "",
             "Category 1": "",
             "Biaya TC": nominal if "Biaya TC" in kategori_gl else "",
@@ -161,7 +193,7 @@ if submitted:
         
         df_dokumen = pd.DataFrame([{
             "Tanggal": tanggal.strftime("%d %b %Y"),
-            "Kegiatan & Keterangan": format_teks_rapi(deskripsi),
+            "Kegiatan & Keterangan": final_deskripsi,
             "Nama File Foto": foto.name,
             "Timestamp Upload": waktu_input
         }])
