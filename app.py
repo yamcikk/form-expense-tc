@@ -28,7 +28,7 @@ DATA_KARYAWAN = {
 # Membuat Form Input
 with st.form("expense_form"):
     st.markdown("### 1. Informasi Karyawan & Area")
-    pilihan_nama = st.selectbox("Nama Karyawan", list(DATA_KARYAWAN.keys()))
+    pilihan_nama = st.selectbox("Nama Karyawan (Pembuat Laporan)", list(DATA_KARYAWAN.keys()))
     data_terpilih = DATA_KARYAWAN[pilihan_nama]
     
     jabatan = st.text_input("Jabatan", value=data_terpilih["jabatan"])
@@ -61,22 +61,29 @@ with st.form("expense_form"):
         ]
     )
     
-    # FORM KHUSUS JIKA MEMILIH MEALS
+    # VARIABEL DEFAULT
     jenis_meals = ""
+    nama_pic = pilihan_nama if pilihan_nama != "Pilih Nama..." else ""
+    posisi_pic = data_terpilih["jabatan"] if pilihan_nama != "Pilih Nama..." else ""
+    perusahaan = "PT DGW FIT"
+    
+    # FORM KHUSUS HANYA MUNCUL JIKA MEMILIH "Meals"
     if kategori_gl == "Meals":
-        st.info("🍽️ Form Khusus Rincian Meals")
+        st.info("🍽️ Masukkan Detail Rincian Meals")
         jenis_meals = st.selectbox("Jenis Meals", ["BF (Breakfast)", "LC (Lunch)", "CB (Coffeebreak)", "DN (Dinner)"])
+        nama_pic = st.text_input("Nama PIC yang Ikut Makan (Bisa > 1 orang, pisahkan dengan koma)", value=pilihan_nama)
+        posisi_pic = st.text_input("Posisi PIC (Urutkan sesuai nama PIC)", value=data_terpilih["jabatan"])
+        perusahaan = st.text_input("Perusahaan", value="PT DGW FIT")
     
     tempat = st.text_input("Tempat Pembelian")
     alamat = st.text_input("Alamat Pembelian")
     
-    default_pic = pilihan_nama if pilihan_nama != "Pilih Nama..." else ""
-    default_posisi = data_terpilih["jabatan"] if pilihan_nama != "Pilih Nama..." else ""
-    
-    nama_pic = st.text_input("Nama PIC (Yang ikut makan / bertransaksi)", value=default_pic)
-    posisi_pic = st.text_input("Posisi PIC", value=default_posisi)
-    perusahaan = st.text_input("Perusahaan", value="PT DGW FIT")
-    
+    # Jika bukan meals, tetap sediakan input PIC standar
+    if kategori_gl != "Meals":
+        nama_pic = st.text_input("Nama PIC", value=pilihan_nama if pilihan_nama != "Pilih Nama..." else "")
+        posisi_pic = st.text_input("Posisi PIC", value=data_terpilih["jabatan"])
+        perusahaan = st.text_input("Perusahaan", value="PT DGW FIT")
+
     deskripsi = st.text_area("Description (Keterangan Kegiatan)")
     
     alasan_non_bill = st.selectbox(
@@ -124,9 +131,9 @@ if submitted:
         ]
         df_header = pd.DataFrame(header_info)
         
-        # Menyesuaikan kolom berdasarkan apakah ini transaksi Meals atau Umum/Lainnya
+        # Susunan baris data berdasarkan kategori
         if kategori_gl == "Meals":
-            kode_jenis_meals = jenis_meals.split(" ")[0] # Mengambil kode pendek (BF/LC/CB/DN)
+            kode_jenis_meals = jenis_meals.split(" ")[0] # Mengambil kode BF/LC/CB/DN
             row_data = {
                 "Date": tanggal.strftime("%d/%m/%Y"),
                 "Jenis Meals": kode_jenis_meals,
@@ -166,7 +173,7 @@ if submitted:
             "Timestamp Upload": waktu_input
         }])
         
-        # Konversi ke File Excel (.xlsx) dengan nama sheet menyesuaikan jenis form
+        # Konversi ke File Excel (.xlsx)
         output = io.BytesIO()
         with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
             sheet_name_rekap = "Form Meals" if kategori_gl == "Meals" else "Form Expense"
