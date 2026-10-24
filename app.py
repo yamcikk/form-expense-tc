@@ -43,7 +43,7 @@ except:
     pass
 
 st.title("PT. DGW FIT")
-st.subheader("Settlement Report Expense - AST TCS Training Center Nasional")
+st.subheader("Settlement Report Expense - Training Center Nasional")
 
 # Fungsi untuk merapikan teks
 def format_teks_rapi(teks):
