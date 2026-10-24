@@ -6,7 +6,7 @@ import io
 # Konfigurasi Halaman (Tampilan Mobile)
 st.set_page_config(page_title="Form Expense Area", page_icon="📋", layout="centered")
 
-# Session state untuk menyimpan KM Terakhir berdasarkan kode gasoline per user
+# Session state untuk menyimpan riwayat KM berdasarkan user dan kode gasoline
 if 'km_history_per_code' not in st.session_state:
     st.session_state['km_history_per_code'] = {}
 
@@ -72,7 +72,7 @@ kategori_gl = st.selectbox(
         "Postage",
         "Transport",
         "Meals",
-        "Hotel (Jika perdin dan ada laundry)",
+        "Hotel (Jika perdin dan ada laundry, masukan pada post ini)",
         "Others"
     ]
 )
@@ -86,7 +86,6 @@ pilihan_kode_g = ""
 if "Gasoline" in kategori_gl:
     st.info("⛽ Form Gasoline Terdeteksi")
     
-    # Dropdown pilihan kode gasoline
     pilihan_kode_g = st.selectbox(
         "Pilih Nomor Gasoline",
         ["G", "G1", "G2", "G3", "G4", "G5"]
@@ -94,19 +93,26 @@ if "Gasoline" in kategori_gl:
     
     liter = st.number_input("Jumlah Liter", min_value=0.0, step=0.1)
     
-    # Logika menarik KM Sebelumnya secara otomatis berdasarkan pasangan kode sebelumnya
-    # Contoh: Jika pilih G1, cari KM Sekarang dari G milik user tersebut.
-    # Jika pilih G2, cari KM Sekarang dari G1 milik user tersebut, dst.
-    map_sebelumnya = {"G1": "G", "G2": "G1", "G3": "G2", "G4": "G3", "G5": "G4"}
+    # Pemetaan urutan kode sebelumnya untuk menarik KM Sekarang secara akurat
+    # G1 menarik dari G, G2 menarik dari G1, G3 dari G2, dst.
+    mapping_prev_code = {
+        "G1": "G",
+        "G2": "G1",
+        "G3": "G2",
+        "G4": "G3",
+        "G5": "G4"
+    }
     
     suggested_km = 0
     if pilihan_nama != "Pilih Nama...":
         user_memory = st.session_state['km_history_per_code'].get(pilihan_nama, {})
-        if pilihan_kode_g in map_sebelumnya:
-            prev_code = map_sebelumnya[pilihan_kode_g]
-            suggested_km = user_memory.get(prev_code, 0)
+        
+        if pilihan_kode_g in mapping_prev_code:
+            target_prev = mapping_prev_code[pilihan_kode_g]
+            suggested_km = user_memory.get(target_prev, 0)
         elif pilihan_kode_g == "G":
-            suggested_km = user_memory.get("G_last", 0)
+            # Jika memilih G, ambil dari input terakhir user jika ada
+            suggested_km = user_memory.get("latest_km", 0)
 
     km_sebelumnya = st.number_input(
         f"KM Sebelumnya (Otomatis menyambung dari pengisian sebelumnya)", 
@@ -158,14 +164,14 @@ if submitted:
         waktu_input = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         st.success(f"Data pengeluaran Rp {nominal:,} berhasil dicatat pada {waktu_input}!")
         
-        # Simpan KM Sekarang ke memori berdasarkan kode dan nama user
+        # Simpan KM Sekarang ke memori berdasarkan nama user dan kode gasoline yang dipilih (G, G1, G2, dst.)
         if "Gasoline" in kategori_gl and km_sekarang > 0 and pilihan_nama != "Pilih Nama...":
             if pilihan_nama not in st.session_state['km_history_per_code']:
                 st.session_state['km_history_per_code'][pilihan_nama] = {}
             
-            # Simpan KM Sekarang ke kode yang sedang diinput (misal simpan ke G atau G1)
+            # Simpan KM Sekarang untuk kode aktif (misal: simpan untuk 'G')
             st.session_state['km_history_per_code'][pilihan_nama][pilihan_kode_g] = km_sekarang
-            st.session_state['km_history_per_code'][pilihan_nama]["G_last"] = km_sekarang
+            st.session_state['km_history_per_code'][pilihan_nama]["latest_km"] = km_sekarang
 
         header_info = [
             ["PT. DGW FIT", ""],
@@ -229,6 +235,5 @@ if submitted:
             file_name=f"Expense_{pilihan_nama}.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
-        st.rerun()
     else:
         st.error("Gagal! Pilih Nama Karyawan, lengkapi Keterangan, Nominal, dan ambil foto bukti.")
