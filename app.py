@@ -2,13 +2,32 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 import io
+import json
+import os
 
 # Konfigurasi Halaman (Tampilan Mobile)
 st.set_page_config(page_title="Form Expense Area", page_icon="📋", layout="centered")
 
-# Session state untuk menyimpan riwayat KM dan file Excel hasil submit
+# File lokal untuk menyimpan memori permanen agar tidak hilang saat refresh/ganti hari
+DB_FILE = "gasoline_memory.json"
+
+def load_memory():
+    if os.path.exists(DB_FILE):
+        try:
+            with open(DB_FILE, "r") as f:
+                return json.load(f)
+        except:
+            return {}
+    return {}
+
+def save_memory(data):
+    with open(DB_FILE, "w") as f:
+        json.dump(data, f)
+
+# Muat memori ke session state
 if 'km_history_per_code' not in st.session_state:
-    st.session_state['km_history_per_code'] = {}
+    st.session_state['km_history_per_code'] = load_memory()
+
 if 'download_data' not in st.session_state:
     st.session_state['download_data'] = None
 if 'file_name_download' not in st.session_state:
@@ -76,7 +95,7 @@ kategori_gl = st.selectbox(
         "Postage",
         "Transport",
         "Meals",
-        "Hotel (Jika perdin dan ada laundry)",
+        "Hotel (Jika perdin dan ada laundry, masukan pada post ini)",
         "Others"
     ]
 )
@@ -92,17 +111,14 @@ if "Gasoline" in kategori_gl:
     
     pilihan_kode_g = st.selectbox(
         "Pilih Nomor Gasoline",
-        ["G", "G1", "G2", "G3", "G4", "G5"]
+        ["G", "G1", "G2", "G3", "G4", "G5", "G6", "G7", "G8", "G9", "G10"]
     )
     
     liter = st.number_input("Jumlah Liter", min_value=0.0, step=0.1)
     
     mapping_prev_code = {
-        "G1": "G",
-        "G2": "G1",
-        "G3": "G2",
-        "G4": "G3",
-        "G5": "G4"
+        "G1": "G", "G2": "G1", "G3": "G2", "G4": "G3", "G5": "G4",
+        "G6": "G5", "G7": "G6", "G8": "G7", "G9": "G8", "G10": "G9"
     }
     
     suggested_km = 0
@@ -164,13 +180,16 @@ if submitted:
     if pilihan_nama != "Pilih Nama..." and deskripsi and nominal > 0 and foto:
         waktu_input = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         
-        # Simpan KM Sekarang ke memori berdasarkan nama user dan kode gasoline
+        # Simpan KM ke memori permanen JSON
         if "Gasoline" in kategori_gl and km_sekarang > 0 and pilihan_nama != "Pilih Nama...":
             if pilihan_nama not in st.session_state['km_history_per_code']:
                 st.session_state['km_history_per_code'][pilihan_nama] = {}
             
             st.session_state['km_history_per_code'][pilihan_nama][pilihan_kode_g] = km_sekarang
             st.session_state['km_history_per_code'][pilihan_nama]["latest_km"] = km_sekarang
+            
+            # Simpan ke file fisik server
+            save_memory(st.session_state['km_history_per_code'])
 
         header_info = [
             ["PT. DGW FIT", ""],
@@ -215,7 +234,7 @@ if submitted:
         
         df_dokumen = pd.DataFrame([{
             "Tanggal": tanggal.strftime("%d %b %Y"),
-            "Kegiatan & Keterangan": final_deskripsi,
+            "Kegiatan & Keterangan": format_teks_rapi(deskripsi),
             "Nama File Foto": foto.name,
             "Timestamp Upload": waktu_input
         }])
@@ -227,7 +246,6 @@ if submitted:
             df_transaksi.to_excel(writer, sheet_name=sheet_name_rekap, index=False, startrow=len(header_info))
             df_dokumen.to_excel(writer, sheet_name='Dok. Kegiatan', index=False)
         
-        # Simpan ke session state agar stabil dan tidak hilang
         st.session_state['download_data'] = output.getvalue()
         st.session_state['file_name_download'] = f"Expense_{pilihan_nama}.xlsx"
         
@@ -235,7 +253,6 @@ if submitted:
     else:
         st.error("Gagal! Pilih Nama Karyawan, lengkapi Keterangan, Nominal, dan ambil foto bukti.")
 
-# Menampilkan tombol download jika data sudah ada di session state
 if st.session_state['download_data'] is not None:
     st.download_button(
         label="⬇️ Unduh File Excel (Sesuai Format HO)",
