@@ -6,9 +6,13 @@ import io
 # Konfigurasi Halaman (Tampilan Mobile)
 st.set_page_config(page_title="Form Expense Area", page_icon="📋", layout="centered")
 
-# Session state untuk menyimpan riwayat KM berdasarkan user dan kode gasoline
+# Session state untuk menyimpan riwayat KM dan file Excel hasil submit
 if 'km_history_per_code' not in st.session_state:
     st.session_state['km_history_per_code'] = {}
+if 'download_data' not in st.session_state:
+    st.session_state['download_data'] = None
+if 'file_name_download' not in st.session_state:
+    st.session_state['file_name_download'] = ""
 
 # Menampilkan Logo jika ada
 try:
@@ -72,12 +76,12 @@ kategori_gl = st.selectbox(
         "Postage",
         "Transport",
         "Meals",
-        "Hotel (Jika perdin dan ada laundry, masukan pada post ini)",
+        "Hotel (Jika perdin dan ada laundry)",
         "Others"
     ]
 )
 
-# FORM KHUSUS GASOLINE DENGAN DROPDOWN KODE MANUAL (G, G1, G2, DST)
+# FORM KHUSUS GASOLINE
 liter = 0.0
 km_sebelumnya = 0
 km_sekarang = 0
@@ -93,8 +97,6 @@ if "Gasoline" in kategori_gl:
     
     liter = st.number_input("Jumlah Liter", min_value=0.0, step=0.1)
     
-    # Pemetaan urutan kode sebelumnya untuk menarik KM Sekarang secara akurat
-    # G1 menarik dari G, G2 menarik dari G1, G3 dari G2, dst.
     mapping_prev_code = {
         "G1": "G",
         "G2": "G1",
@@ -111,7 +113,6 @@ if "Gasoline" in kategori_gl:
             target_prev = mapping_prev_code[pilihan_kode_g]
             suggested_km = user_memory.get(target_prev, 0)
         elif pilihan_kode_g == "G":
-            # Jika memilih G, ambil dari input terakhir user jika ada
             suggested_km = user_memory.get("latest_km", 0)
 
     km_sebelumnya = st.number_input(
@@ -162,14 +163,12 @@ submitted = st.button("Submit Laporan")
 if submitted:
     if pilihan_nama != "Pilih Nama..." and deskripsi and nominal > 0 and foto:
         waktu_input = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        st.success(f"Data pengeluaran Rp {nominal:,} berhasil dicatat pada {waktu_input}!")
         
-        # Simpan KM Sekarang ke memori berdasarkan nama user dan kode gasoline yang dipilih (G, G1, G2, dst.)
+        # Simpan KM Sekarang ke memori berdasarkan nama user dan kode gasoline
         if "Gasoline" in kategori_gl and km_sekarang > 0 and pilihan_nama != "Pilih Nama...":
             if pilihan_nama not in st.session_state['km_history_per_code']:
                 st.session_state['km_history_per_code'][pilihan_nama] = {}
             
-            # Simpan KM Sekarang untuk kode aktif (misal: simpan untuk 'G')
             st.session_state['km_history_per_code'][pilihan_nama][pilihan_kode_g] = km_sekarang
             st.session_state['km_history_per_code'][pilihan_nama]["latest_km"] = km_sekarang
 
@@ -224,16 +223,23 @@ if submitted:
         output = io.BytesIO()
         with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
             sheet_name_rekap = "Form Expense"
-            
             df_header.to_excel(writer, sheet_name=sheet_name_rekap, index=False, header=False)
             df_transaksi.to_excel(writer, sheet_name=sheet_name_rekap, index=False, startrow=len(header_info))
             df_dokumen.to_excel(writer, sheet_name='Dok. Kegiatan', index=False)
         
-        st.download_button(
-            label="⬇️ Unduh File Excel (Sesuai Format HO)",
-            data=output.getvalue(),
-            file_name=f"Expense_{pilihan_nama}.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
+        # Simpan ke session state agar stabil dan tidak hilang
+        st.session_state['download_data'] = output.getvalue()
+        st.session_state['file_name_download'] = f"Expense_{pilihan_nama}.xlsx"
+        
+        st.success(f"Data pengeluaran Rp {nominal:,} berhasil dicatat pada {waktu_input}!")
     else:
         st.error("Gagal! Pilih Nama Karyawan, lengkapi Keterangan, Nominal, dan ambil foto bukti.")
+
+# Menampilkan tombol download jika data sudah ada di session state
+if st.session_state['download_data'] is not None:
+    st.download_button(
+        label="⬇️ Unduh File Excel (Sesuai Format HO)",
+        data=st.session_state['download_data'],
+        file_name=st.session_state['file_name_download'],
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
