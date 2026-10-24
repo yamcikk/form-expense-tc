@@ -6,11 +6,11 @@ import io
 # Konfigurasi Halaman (Tampilan Mobile)
 st.set_page_config(page_title="Form Expense Area", page_icon="📋", layout="centered")
 
-# Menggunakan Session State untuk menyimpan riwayat KM dan hitungan G per karyawan
+# Inisialisasi Session State yang lebih aman
 if 'last_km_gasoline' not in st.session_state:
     st.session_state['last_km_gasoline'] = {}
-if 'gasoline_count' not in st.session_state:
-    st.session_state['gasoline_count'] = {}
+if 'gasoline_history_count' not in st.session_state:
+    st.session_state['gasoline_history_count'] = {}
 
 # Menampilkan Logo jika ada
 try:
@@ -86,20 +86,25 @@ km_sekarang = 0
 kode_gasoline = ""
 
 if "Gasoline" in kategori_gl:
-    if pilihan_nama not in st.session_state['gasoline_count']:
-        st.session_state['gasoline_count'][pilihan_nama] = 0
+    if pilihan_nama not in st.session_state['gasoline_history_count']:
+        st.session_state['gasoline_history_count'][pilihan_nama] = 0
     
-    count = st.session_state['gasoline_count'][pilihan_nama]
-    kode_gasoline = "G" if count == 0 else f"G{count}"
+    total_input_sebelumnya = st.session_state['gasoline_history_count'][pilihan_nama]
     
-    st.info(f"⛽ Form Gasoline Terdeteksi: **Kode [{kode_gasoline}]**")
+    # Penomoran: 0 -> G, 1 -> G1, 2 -> G2, dst.
+    if total_input_sebelumnya == 0:
+        kode_gasoline = "G"
+    else:
+        kode_gasoline = f"G{total_input_sebelumnya}"
+    
+    st.info(f"⛽ Form Gasoline Terdeteksi: **Kode [{kode_gasoline}]** (Urutan ke-{total_input_sebelumnya + 1} hari ini)")
     
     liter = st.number_input("Jumlah Liter", min_value=0.0, step=0.1)
     
-    # Ambil otomatis KM sebelumnya dari memori sesi, tapi tetap bisa diketik/diubah manual oleh user
+    # Ambil otomatis KM sebelumnya dari memori sesi
     default_km_prev = st.session_state['last_km_gasoline'].get(pilihan_nama, 0)
     
-    km_sebelumnya = st.number_input("KM Sebelumnya (Bisa diubah manual untuk input pertama / G)", value=default_km_prev, step=1)
+    km_sebelumnya = st.number_input("KM Sebelumnya", value=int(default_km_prev), step=1)
     km_sekarang = st.number_input("KM Sekarang", min_value=0, step=1)
 
 deskripsi = st.text_area("Description (Keterangan Kegiatan)")
@@ -145,10 +150,10 @@ if submitted:
         waktu_input = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         st.success(f"Data pengeluaran Rp {nominal:,} berhasil dicatat pada {waktu_input}!")
         
-        # Simpan memori KM untuk transaksi gasoline berikutnya
+        # Jika transaksi ini adalah Gasoline, simpan KM Sekarang dan tambahkan counter penomoran G
         if "Gasoline" in kategori_gl and km_sekarang > 0:
             st.session_state['last_km_gasoline'][pilihan_nama] = km_sekarang
-            st.session_state['gasoline_count'][pilihan_nama] += 1
+            st.session_state['gasoline_history_count'][pilihan_nama] += 1
 
         header_info = [
             ["PT. DGW FIT", ""],
