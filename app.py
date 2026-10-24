@@ -8,7 +8,7 @@ import os
 # Konfigurasi Halaman (Tampilan Mobile)
 st.set_page_config(page_title="Form Expense Area", page_icon="📋", layout="centered")
 
-# File lokal untuk menyimpan memori permanen agar tidak hilang saat refresh/ganti hari
+# File lokal untuk memori permanen gasoline
 DB_FILE = "gasoline_memory.json"
 
 def load_memory():
@@ -24,7 +24,6 @@ def save_memory(data):
     with open(DB_FILE, "w") as f:
         json.dump(data, f)
 
-# Muat memori ke session state
 if 'km_history_per_code' not in st.session_state:
     st.session_state['km_history_per_code'] = load_memory()
 
@@ -95,12 +94,12 @@ kategori_gl = st.selectbox(
         "Postage",
         "Transport",
         "Meals",
-        "Hotel (Jika perdin dan ada laundry, masukan pada post ini)",
+        "Hotel (Jika perdin dan ada laundry)",
         "Others"
     ]
 )
 
-# FORM KHUSUS GASOLINE
+# VARIABEL KHUSUS GASOLINE
 liter = 0.0
 km_sebelumnya = 0
 km_sekarang = 0
@@ -108,12 +107,10 @@ pilihan_kode_g = ""
 
 if "Gasoline" in kategori_gl:
     st.info("⛽ Form Gasoline Terdeteksi")
-    
     pilihan_kode_g = st.selectbox(
         "Pilih Nomor Gasoline",
         ["G", "G1", "G2", "G3", "G4", "G5", "G6", "G7", "G8", "G9", "G10"]
     )
-    
     liter = st.number_input("Jumlah Liter", min_value=0.0, step=0.1)
     
     mapping_prev_code = {
@@ -124,19 +121,46 @@ if "Gasoline" in kategori_gl:
     suggested_km = 0
     if pilihan_nama != "Pilih Nama...":
         user_memory = st.session_state['km_history_per_code'].get(pilihan_nama, {})
-        
         if pilihan_kode_g in mapping_prev_code:
             target_prev = mapping_prev_code[pilihan_kode_g]
             suggested_km = user_memory.get(target_prev, 0)
         elif pilihan_kode_g == "G":
             suggested_km = user_memory.get("latest_km", 0)
 
-    km_sebelumnya = st.number_input(
-        f"KM Sebelumnya (Otomatis menyambung dari pengisian sebelumnya)", 
-        value=int(suggested_km), 
-        step=1
-    )
+    km_sebelumnya = st.number_input("KM Sebelumnya", value=int(suggested_km), step=1)
     km_sekarang = st.number_input("KM Sekarang", min_value=0, step=1)
+
+# VARIABEL KHUSUS MEALS
+ jenis_meal = ""
+ tempat_makan = ""
+ alamat_makan = ""
+ daftar_pic_meals = []
+
+ if kategori_gl == "Meals":
+     st.info("🍽️ Form Rincian Meals Terdeteksi")
+     jenis_meal = st.selectbox("Jenis Meal", ["BF (Breakfast)", "LC (Lunch)", "CB (Coffee Break)", "DN (Dinner)"])
+     tempat_makan = st.text_input("Tempat Makan (Restoran/Warung)")
+     alamat_makan = st.text_input("Alamat Tempat Makan")
+     
+     st.markdown("**Daftar PIC / Orang yang Ikut Makan:**")
+     if 'jumlah_pic_meals' not in st.session_state:
+         st.session_state['jumlah_pic_meals'] = 1
+     
+     col_btn1, col_btn2 = st.columns(2)
+     with col_btn1:
+         if st.button("➕ Tambah Orang"):
+             st.session_state['jumlah_pic_meals'] += 1
+     with col_btn2:
+         if st.session_state['jumlah_pic_meals'] > 1 and st.button("➖ Kurangi Orang"):
+             st.session_state['jumlah_pic_meals'] -= 1
+             
+     for i in range(st.session_state['jumlah_pic_meals']):
+         st.markdown(f"*PIC ke-{i+1}*")
+         p_nama = st.text_input(f"Nama PIC {i+1}", value=pilihan_nama if i == 0 else "", key=f"pic_nama_{i}")
+         p_jbt = st.text_input(f"Jabatan {i+1}", value=data_terpilih["jabatan"] if i == 0 else "", key=f"pic_jbt_{i}")
+         p_perusahaan = st.text_input(f"Perusahaan {i+1}", value="PT DGW FIT", key=f"pic_perusahaan_{i}")
+         if p_nama:
+             daftar_pic_meals.append(f"{p_nama} ({p_jbt} - {p_perusahaan})")
 
 deskripsi = st.text_area("Description (Keterangan Kegiatan)")
 nominal = st.number_input("Nominal (Rp)", min_value=0, step=1000)
@@ -180,15 +204,12 @@ if submitted:
     if pilihan_nama != "Pilih Nama..." and deskripsi and nominal > 0 and foto:
         waktu_input = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         
-        # Simpan KM ke memori permanen JSON
+        # Simpan KM ke memori permanen JSON jika Gasoline
         if "Gasoline" in kategori_gl and km_sekarang > 0 and pilihan_nama != "Pilih Nama...":
             if pilihan_nama not in st.session_state['km_history_per_code']:
                 st.session_state['km_history_per_code'][pilihan_nama] = {}
-            
             st.session_state['km_history_per_code'][pilihan_nama][pilihan_kode_g] = km_sekarang
             st.session_state['km_history_per_code'][pilihan_nama]["latest_km"] = km_sekarang
-            
-            # Simpan ke file fisik server
             save_memory(st.session_state['km_history_per_code'])
 
         header_info = [
@@ -208,9 +229,14 @@ if submitted:
         
         final_deskripsi = format_teks_rapi(deskripsi)
         
+        # Jika Meals, gabungkan informasi jenis meal, tempat, dan PIC ke dalam deskripsi/keterangan agar tercatat rapi
+        if kategori_gl == "Meals":
+            pic_str = ", ".join(daftar_pic_meals)
+            final_deskripsi = f"[{jenis_meal}] Tempat: {tempat_makan} ({alamat_makan}). PIC: {pic_str}. Keterangan: {final_deskripsi}"
+
         row_data = {
             "Date": tanggal.strftime("%d/%m/%Y"),
-            "Non Bill/Gasoline (G) - GNB (Gasoline Non Bill)/Meals (Wajib Diisi)": pilihan_kode_g if "Gasoline" in kategori_gl else (alasan_non_bill if status_nota == "Non Bill" else ""),
+            "Non Bill/Gasoline (G) - GNB (Gasoline Non Bill)/Meals (Wajib Diisi)": pilihan_kode_g if "Gasoline" in kategori_gl else (jenis_meal if kategori_gl == "Meals" else (alasan_non_bill if status_nota == "Non Bill" else "")),
             "Liter": liter if "Gasoline" in kategori_gl else "",
             "KM Sebelumnya": km_sebelumnya if "Gasoline" in kategori_gl else "",
             "KM Sekarang": km_sekarang if "Gasoline" in kategori_gl else "",
@@ -234,7 +260,7 @@ if submitted:
         
         df_dokumen = pd.DataFrame([{
             "Tanggal": tanggal.strftime("%d %b %Y"),
-            "Kegiatan & Keterangan": format_teks_rapi(deskripsi),
+            "Kegiatan & Keterangan": final_deskripsi,
             "Nama File Foto": foto.name,
             "Timestamp Upload": waktu_input
         }])
