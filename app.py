@@ -30,6 +30,12 @@ if 'km_history_per_code' not in st.session_state:
 if 'list_transaksi' not in st.session_state:
     st.session_state['list_transaksi'] = []
 
+# INISIALISASI SESSION STATE UNTUK DOWNLOAD DATA AGAR TIDAK KEYERROR
+if 'download_data' not in st.session_state:
+    st.session_state['download_data'] = None
+if 'file_name_download' not in st.session_state:
+    st.session_state['file_name_download'] = ""
+
 # Menampilkan Logo jika ada
 try:
     st.image("logo.png", width=150)
@@ -92,7 +98,7 @@ kategori_gl = st.selectbox(
         "Postage",
         "Transport",
         "Meals",
-        "Hotel (Jika perdin dan ada laundry)",
+        "Hotel (Jika perdin dan ada laundry, masukan pada post ini)",
         "Others"
     ]
 )
@@ -275,17 +281,15 @@ if len(st.session_state['list_transaksi']) > 0:
                 with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
                     workbook = writer.book
                     
-                    # Styles Tanda Tangan & Tabel
                     sig_format_header = workbook.add_format({'bold': True, 'align': 'center', 'valign': 'middle', 'border': 1, 'bg_color': '#F2F2F2'})
                     sig_format_name = workbook.add_format({'bold': True, 'italic': True, 'font_color': 'red', 'align': 'center', 'valign': 'middle', 'border': 1})
                     sig_format_box = workbook.add_format({'border': 1, 'align': 'center', 'valign': 'middle'})
 
-                    # Helper fungsi membuat blok tanda tangan di sheet tertentu (Form Expense & Form Non Bill)
                     def create_signature_block(ws):
                         sig_headers = ["Prepared By", "Verified By", "Approved By", "Approved By"]
                         sig_names = [pilihan_nama, "YAM CIK", "HARIS DWIJAYANTO", "EKO AGUS K"]
                         for col_i, header_text in enumerate(sig_headers):
-                            c_idx = col_i + 5  # Mulai dari kolom F
+                            c_idx = col_i + 5
                             ws.write(2, c_idx, header_text, sig_format_header)
                             ws.merge_range(3, c_idx, 4, c_idx, "", sig_format_box)
                             ws.write(5, c_idx, sig_names[col_i], sig_format_name)
@@ -295,7 +299,6 @@ if len(st.session_state['list_transaksi']) > 0:
                             except:
                                 pass
 
-                    # Helper fungsi membuat info karyawan di sebelah kiri atas
                     def create_employee_header(ws, sub_title=""):
                         ws.write(0, 0, "PT. DGW FIT")
                         ws.write(1, 0, "SETTLEMENT REPORT EXPENSE - AST TCS TRAINING CENTER NASIONAL")
@@ -384,7 +387,7 @@ if len(st.session_state['list_transaksi']) > 0:
                     ws_nb = workbook.add_worksheet(sheet_nb)
                     writer.sheets[sheet_nb] = ws_nb
                     create_employee_header(ws_nb, "Form Non Bill")
-                    create_signature_block(ws_nb)  # WAJIB ADA TTD SESUAI REQUEST
+                    create_signature_block(ws_nb)
 
                     rows_nb = []
                     for nb in nonbill_items:
@@ -451,7 +454,7 @@ if len(st.session_state['list_transaksi']) > 0:
 
                 st.session_state['download_data'] = output.getvalue()
                 st.session_state['file_name_download'] = f"Expense_Lengkap_{pilihan_nama}.xlsx"
-                st.success("Laporan lengkap 5 Sheet dengan format standar HO dan TTD terlampir berhasil dibuat!")
+                st.success("Laporan lengkap 5 Sheet berhasil dibuat!")
 
 if st.session_state['download_data'] is not None:
     st.download_button(
