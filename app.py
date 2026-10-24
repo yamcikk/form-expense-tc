@@ -7,7 +7,7 @@ import io
 st.set_page_config(page_title="Form Expense Area", page_icon="📋", layout="centered")
 
 st.title("PT. DGW FIT")
-st.subheader("Settlement Report Expense - AST TCS Training Center Nasional")
+st.subheader("Settlement Report Expense - Training Center Nasional")
 
 # Fungsi untuk merapikan teks (Huruf kapital di awal kalimat/setelah titik)
 def format_teks_rapi(teks):
