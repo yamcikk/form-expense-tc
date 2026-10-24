@@ -90,15 +90,16 @@ if "Gasoline" in kategori_gl:
         st.session_state['gasoline_count'][pilihan_nama] = 0
     
     count = st.session_state['gasoline_count'][pilihan_nama]
-    # Penomoran: 0 -> G, 1 -> G1, 2 -> G2, dst.
     kode_gasoline = "G" if count == 0 else f"G{count}"
     
     st.info(f"⛽ Form Gasoline Terdeteksi: **Kode [{kode_gasoline}]**")
     
     liter = st.number_input("Jumlah Liter", min_value=0.0, step=0.1)
     
+    # Ambil otomatis KM sebelumnya dari memori sesi, tapi tetap bisa diketik/diubah manual oleh user
     default_km_prev = st.session_state['last_km_gasoline'].get(pilihan_nama, 0)
-    km_sebelumnya = st.number_input("KM Sebelumnya (Otomatis dari KM Sekarang sebelumnya)", value=default_km_prev, step=1)
+    
+    km_sebelumnya = st.number_input("KM Sebelumnya (Bisa diubah manual untuk input pertama / G)", value=default_km_prev, step=1)
     km_sekarang = st.number_input("KM Sekarang", min_value=0, step=1)
 
 deskripsi = st.text_area("Description (Keterangan Kegiatan)")
@@ -164,7 +165,6 @@ if submitted:
         ]
         df_header = pd.DataFrame(header_info)
         
-        # Format deskripsi rapi
         final_deskripsi = format_teks_rapi(deskripsi)
         
         row_data = {
