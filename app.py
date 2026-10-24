@@ -131,36 +131,36 @@ if "Gasoline" in kategori_gl:
     km_sekarang = st.number_input("KM Sekarang", min_value=0, step=1)
 
 # VARIABEL KHUSUS MEALS
- jenis_meal = ""
- tempat_makan = ""
- alamat_makan = ""
- daftar_pic_meals = []
+jenis_meal = ""
+tempat_makan = ""
+alamat_makan = ""
+daftar_pic_meals = []
 
- if kategori_gl == "Meals":
-     st.info("🍽️ Form Rincian Meals Terdeteksi")
-     jenis_meal = st.selectbox("Jenis Meal", ["BF (Breakfast)", "LC (Lunch)", "CB (Coffee Break)", "DN (Dinner)"])
-     tempat_makan = st.text_input("Tempat Makan (Restoran/Warung)")
-     alamat_makan = st.text_input("Alamat Tempat Makan")
-     
-     st.markdown("**Daftar PIC / Orang yang Ikut Makan:**")
-     if 'jumlah_pic_meals' not in st.session_state:
-         st.session_state['jumlah_pic_meals'] = 1
-     
-     col_btn1, col_btn2 = st.columns(2)
-     with col_btn1:
-         if st.button("➕ Tambah Orang"):
-             st.session_state['jumlah_pic_meals'] += 1
-     with col_btn2:
-         if st.session_state['jumlah_pic_meals'] > 1 and st.button("➖ Kurangi Orang"):
-             st.session_state['jumlah_pic_meals'] -= 1
-             
-     for i in range(st.session_state['jumlah_pic_meals']):
-         st.markdown(f"*PIC ke-{i+1}*")
-         p_nama = st.text_input(f"Nama PIC {i+1}", value=pilihan_nama if i == 0 else "", key=f"pic_nama_{i}")
-         p_jbt = st.text_input(f"Jabatan {i+1}", value=data_terpilih["jabatan"] if i == 0 else "", key=f"pic_jbt_{i}")
-         p_perusahaan = st.text_input(f"Perusahaan {i+1}", value="PT DGW FIT", key=f"pic_perusahaan_{i}")
-         if p_nama:
-             daftar_pic_meals.append(f"{p_nama} ({p_jbt} - {p_perusahaan})")
+if kategori_gl == "Meals":
+    st.info("🍽️ Form Rincian Meals Terdeteksi")
+    jenis_meal = st.selectbox("Jenis Meal", ["BF (Breakfast)", "LC (Lunch)", "CB (Coffee Break)", "DN (Dinner)"])
+    tempat_makan = st.text_input("Tempat Makan (Restoran/Warung)")
+    alamat_makan = st.text_input("Alamat Tempat Makan")
+    
+    st.markdown("**Daftar PIC / Orang yang Ikut Makan:**")
+    if 'jumlah_pic_meals' not in st.session_state:
+        st.session_state['jumlah_pic_meals'] = 1
+    
+    col_btn1, col_btn2 = st.columns(2)
+    with col_btn1:
+        if st.button("➕ Tambah Orang"):
+            st.session_state['jumlah_pic_meals'] += 1
+    with col_btn2:
+        if st.session_state['jumlah_pic_meals'] > 1 and st.button("➖ Kurangi Orang"):
+            st.session_state['jumlah_pic_meals'] -= 1
+            
+    for i in range(st.session_state['jumlah_pic_meals']):
+        st.markdown(f"*PIC ke-{i+1}*")
+        p_nama = st.text_input(f"Nama PIC {i+1}", value=pilihan_nama if i == 0 else "", key=f"pic_nama_{i}")
+        p_jbt = st.text_input(f"Jabatan {i+1}", value=data_terpilih["jabatan"] if i == 0 else "", key=f"pic_jbt_{i}")
+        p_perusahaan = st.text_input(f"Perusahaan {i+1}", value="PT DGW FIT", key=f"pic_perusahaan_{i}")
+        if p_nama:
+            daftar_pic_meals.append(f"{p_nama} ({p_jbt} - {p_perusahaan})")
 
 deskripsi = st.text_area("Description (Keterangan Kegiatan)")
 nominal = st.number_input("Nominal (Rp)", min_value=0, step=1000)
@@ -229,14 +229,14 @@ if submitted:
         
         final_deskripsi = format_teks_rapi(deskripsi)
         
-        # Jika Meals, gabungkan informasi jenis meal, tempat, dan PIC ke dalam deskripsi/keterangan agar tercatat rapi
+        # Jika Meals, gabungkan informasi jenis meal, tempat, dan PIC ke dalam deskripsi
         if kategori_gl == "Meals":
             pic_str = ", ".join(daftar_pic_meals)
             final_deskripsi = f"[{jenis_meal}] Tempat: {tempat_makan} ({alamat_makan}). PIC: {pic_str}. Keterangan: {final_deskripsi}"
 
         row_data = {
             "Date": tanggal.strftime("%d/%m/%Y"),
-            "Non Bill/Gasoline (G) - GNB (Gasoline Non Bill)/Meals (Wajib Diisi)": pilihan_kode_g if "Gasoline" in kategori_gl else (jenis_meal if kategori_gl == "Meals" else (alasan_non_bill if status_nota == "Non Bill" else "")),
+            "Non Bill/Gasoline (G) - GNB (Gasoline Non Bill)/Meals (Wajib Diisi)": pilihan_kode_g if "Gasoline" in kategori_gl else (jenis_meal.split(" ")[0] if kategori_gl == "Meals" else (alasan_non_bill if status_nota == "Non Bill" else "")),
             "Liter": liter if "Gasoline" in kategori_gl else "",
             "KM Sebelumnya": km_sebelumnya if "Gasoline" in kategori_gl else "",
             "KM Sekarang": km_sekarang if "Gasoline" in kategori_gl else "",
