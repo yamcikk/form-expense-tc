@@ -25,89 +25,84 @@ DATA_KARYAWAN = {
     }
 }
 
-# Membuat Form Input
-with st.form("expense_form"):
-    st.markdown("### 1. Informasi Karyawan & Area")
-    pilihan_nama = st.selectbox("Nama Karyawan (Pembuat Laporan)", list(DATA_KARYAWAN.keys()))
-    data_terpilih = DATA_KARYAWAN[pilihan_nama]
-    
-    jabatan = st.text_input("Jabatan", value=data_terpilih["jabatan"])
-    tc_area = st.text_input("TC - Area", value=data_terpilih["tc_area"])
-    periode = st.text_input("Periode", value=data_terpilih["periode"])
-    budget_pettycash = st.text_input("Budget Pettycash", value=data_terpilih["budget"])
-    no_phone = st.text_input("No Phone", value=data_terpilih["phone"])
-    nama_bank = st.text_input("Nama Bank", value=data_terpilih["bank"])
-    no_rekening = st.text_input("No. Rekening", value=data_terpilih["rekening"])
-    
-    st.markdown("---")
-    st.markdown("### 2. Rincian Transaksi")
-    
-    tanggal = st.date_input("Date (Tanggal Pembelian)")
-    
-    # KATEGORI PENGELUARAN UTAMA
-    kategori_gl = st.selectbox(
-        "Pilih Jenis Pengeluaran",
-        [
-            "Biaya TC (Umum / Non-Spesifik)",
-            "Parking/Toll",
-            "Gasoline (Konversi jika Pertamax)",
-            "Vehicle Maintenance",
-            "Stationery",
-            "Postage",
-            "Transport",
-            "Meals",
-            "Hotel (Jika perdin dan ada laundry)",
-            "Others"
-        ]
-    )
-    
-    # VARIABEL DEFAULT
-    jenis_meals = ""
-    nama_pic = pilihan_nama if pilihan_nama != "Pilih Nama..." else ""
-    posisi_pic = data_terpilih["jabatan"] if pilihan_nama != "Pilih Nama..." else ""
-    perusahaan = "PT DGW FIT"
-    
-    # FORM KHUSUS HANYA MUNCUL JIKA MEMILIH "Meals"
-    if kategori_gl == "Meals":
-        st.info("🍽️ Masukkan Detail Rincian Meals")
-        jenis_meals = st.selectbox("Jenis Meals", ["BF (Breakfast)", "LC (Lunch)", "CB (Coffeebreak)", "DN (Dinner)"])
-        nama_pic = st.text_input("Nama PIC yang Ikut Makan (Bisa > 1 orang, pisahkan dengan koma)", value=pilihan_nama)
-        posisi_pic = st.text_input("Posisi PIC (Urutkan sesuai nama PIC)", value=data_terpilih["jabatan"])
-        perusahaan = st.text_input("Perusahaan", value="PT DGW FIT")
-    
-    tempat = st.text_input("Tempat Pembelian")
-    alamat = st.text_input("Alamat Pembelian")
-    
-    # Jika bukan meals, tetap sediakan input PIC standar
-    if kategori_gl != "Meals":
-        nama_pic = st.text_input("Nama PIC", value=pilihan_nama if pilihan_nama != "Pilih Nama..." else "")
-        posisi_pic = st.text_input("Posisi PIC", value=data_terpilih["jabatan"])
-        perusahaan = st.text_input("Perusahaan", value="PT DGW FIT")
+st.markdown("### 1. Informasi Karyawan & Area")
+pilihan_nama = st.selectbox("Nama Karyawan (Pembuat Laporan)", list(DATA_KARYAWAN.keys()))
+data_terpilih = DATA_KARYAWAN[pilihan_nama]
 
-    deskripsi = st.text_area("Description (Keterangan Kegiatan)")
-    
-    alasan_non_bill = st.selectbox(
-        "Alasan Non Bill",
-        ["Non Bill - Gasoline", "Non Bill - Meals", "Non Bill"]
-    )
-    
-    # Form khusus jika memilih Gasoline
-    liter = 0.0
-    km_sebelumnya = 0
-    km_sekarang = 0
-    if "Gasoline" in kategori_gl:
-        st.info("⛽ Masukkan Data Liter & Kilometer Kendaraan")
-        liter = st.number_input("Jumlah Liter", min_value=0.0, step=0.1)
-        km_sebelumnya = st.number_input("KM Sebelumnya", min_value=0, step=1)
-        km_sekarang = st.number_input("KM Sekarang", min_value=0, step=1)
+jabatan = st.text_input("Jabatan", value=data_terpilih["jabatan"])
+tc_area = st.text_input("TC - Area", value=data_terpilih["tc_area"])
+periode = st.text_input("Periode", value=data_terpilih["periode"])
+budget_pettycash = st.text_input("Budget Pettycash", value=data_terpilih["budget"])
+no_phone = st.text_input("No Phone", value=data_terpilih["phone"])
+nama_bank = st.text_input("Nama Bank", value=data_terpilih["bank"])
+no_rekening = st.text_input("No. Rekening", value=data_terpilih["rekening"])
 
-    nominal = st.number_input("Nominal (Rp)", min_value=0, step=1000)
-    
-    st.markdown("---")
-    st.write("**Dokumentasi (Wajib Lampirkan Bukti Ber-Timestamp)**")
-    foto = st.camera_input("Ambil Foto Sekarang")
+st.markdown("---")
+st.markdown("### 2. Rincian Transaksi")
 
-    submitted = st.form_submit_button("Submit Laporan")
+tanggal = st.date_input("Date (Tanggal Pembelian)")
+
+# KATEGORI UTAMA (Pilihan ini sekarang langsung merespons layar secara instan)
+kategori_gl = st.selectbox(
+    "Pilih Jenis Pengeluaran",
+    [
+        "Biaya TC (Umum / Non-Spesifik)",
+        "Parking/Toll",
+        "Gasoline (Konversi jika Pertamax)",
+        "Vehicle Maintenance",
+        "Stationery",
+        "Postage",
+        "Transport",
+        "Meals",
+        "Hotel (Jika perdin dan ada laundry)",
+        "Others"
+    ]
+)
+
+# VARIABEL
+jenis_meals = ""
+nama_pic = pilihan_nama if pilihan_nama != "Pilih Nama..." else ""
+posisi_pic = data_terpilih["jabatan"] if pilihan_nama != "Pilih Nama..." else ""
+perusahaan = "PT DGW FIT"
+
+# FORM KHUSUS MEALS (Langsung muncul begitu "Meals" dipilih di atas)
+if kategori_gl == "Meals":
+    st.info("🍽️ Form Khusus Rincian Meals (Bisa diisi lebih dari 1 PIC)")
+    jenis_meals = st.selectbox("Jenis Meals", ["BF (Breakfast)", "LC (Lunch)", "CB (Coffeebreak)", "DN (Dinner)"])
+    nama_pic = st.text_input("Nama PIC yang Ikut Makan (Contoh: Dika Aprilyanto, Ahmad Nabiel Z, Ibrahim)")
+    posisi_pic = st.text_input("Posisi PIC (Contoh: Ass.TCS, FA RnD, MT)")
+    perusahaan = st.text_input("Perusahaan", value="PT DGW FIT")
+else:
+    nama_pic = st.text_input("Nama PIC", value=pilihan_nama if pilihan_nama != "Pilih Nama..." else "")
+    posisi_pic = st.text_input("Posisi PIC", value=data_terpilih["jabatan"])
+    perusahaan = st.text_input("Perusahaan", value="PT DGW FIT")
+
+tempat = st.text_input("Tempat Pembelian")
+alamat = st.text_input("Alamat Pembelian")
+deskripsi = st.text_area("Description (Keterangan Kegiatan)")
+
+alasan_non_bill = st.selectbox(
+    "Alasan Non Bill",
+    ["Non Bill - Gasoline", "Non Bill - Meals", "Non Bill"]
+)
+
+# Form khusus jika memilih Gasoline
+liter = 0.0
+km_sebelumnya = 0
+km_sekarang = 0
+if "Gasoline" in kategori_gl:
+    st.info("⛽ Masukkan Data Liter & Kilometer Kendaraan")
+    liter = st.number_input("Jumlah Liter", min_value=0.0, step=0.1)
+    km_sebelumnya = st.number_input("KM Sebelumnya", min_value=0, step=1)
+    km_sekarang = st.number_input("KM Sekarang", min_value=0, step=1)
+
+nominal = st.number_input("Nominal (Rp)", min_value=0, step=1000)
+
+st.markdown("---")
+st.write("**Dokumentasi (Wajib Lampirkan Bukti Ber-Timestamp)**")
+foto = st.camera_input("Ambil Foto Sekarang")
+
+submitted = st.button("Submit Laporan")
 
 # Logika setelah tombol Submit ditekan
 if submitted:
@@ -115,7 +110,6 @@ if submitted:
         waktu_input = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         st.success(f"Data pengeluaran Rp {nominal:,} berhasil dicatat pada {waktu_input}!")
         
-        # Header Info Excel
         header_info = [
             ["PT. DGW FIT", ""],
             ["SETTLEMENT REPORT EXPENSE - AST TCS TRAINING CENTER NASIONAL", ""],
@@ -131,9 +125,8 @@ if submitted:
         ]
         df_header = pd.DataFrame(header_info)
         
-        # Susunan baris data berdasarkan kategori
         if kategori_gl == "Meals":
-            kode_jenis_meals = jenis_meals.split(" ")[0] # Mengambil kode BF/LC/CB/DN
+            kode_jenis_meals = jenis_meals.split(" ")[0]
             row_data = {
                 "Date": tanggal.strftime("%d/%m/%Y"),
                 "Jenis Meals": kode_jenis_meals,
@@ -173,7 +166,6 @@ if submitted:
             "Timestamp Upload": waktu_input
         }])
         
-        # Konversi ke File Excel (.xlsx)
         output = io.BytesIO()
         with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
             sheet_name_rekap = "Form Meals" if kategori_gl == "Meals" else "Form Expense"
